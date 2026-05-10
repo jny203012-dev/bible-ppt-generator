@@ -1,6 +1,4 @@
-app.py
-bible.json
-requirements.txt
-static/
-  index.html
-  script.js
+flask
+python-pptx
+pillow
+gunicorn

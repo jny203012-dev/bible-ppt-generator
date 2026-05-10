@@ -1,4 +1,6 @@
-flask
-python-pptx
-requests
-gunicorn
+app.py
+bible.json
+requirements.txt
+static/
+  index.html
+  script.js

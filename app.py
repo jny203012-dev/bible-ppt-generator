@@ -163,32 +163,46 @@ with open('bible.json', 'r', encoding='utf-8') as f:
 import re
 
 def parse_verse_input(text):
-    text = text.strip().replace(" ", "")
+    text = text.strip()
+    text = text.replace(" ", "")
+    text = text.replace("~", "-")
+    text = text.rstrip(":")  # 겔45: 처럼 끝에 콜론 있어도 처리
 
-    # 뒤에서 장:절(-절) 부분 찾기
-    match = re.search(r'(\d+):(\d+)(?:-(\d+))?$', text)
+    # 범위 입력: 겔44:15-45:12 / 겔44:15-20 / 겔44:15
+    range_match = re.search(r'(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$', text)
 
-    if not match:
-        raise ValueError("입력 형식 오류 (예: 겔40:1-4 또는 에스겔40:1-4)")
+    if range_match:
+        book_input = text[:range_match.start()]
+        start_chapter = int(range_match.group(1))
+        start_verse = int(range_match.group(2))
 
-    chapter = int(match.group(1))
-    start = int(match.group(2))
-    end = int(match.group(3)) if match.group(3) else start
+        if range_match.group(4):
+            end_chapter = int(range_match.group(3)) if range_match.group(3) else start_chapter
+            end_verse = int(range_match.group(4))
+        else:
+            end_chapter = start_chapter
+            end_verse = start_verse
 
-    # 앞부분은 책 이름
-    book_input = text[:match.start()]
+    else:
+        # 장 전체 입력: 겔45 / 에스겔45
+        whole_chapter_match = re.search(r'(\d+)$', text)
 
-    if not book_input:
-        raise ValueError("책 이름이 없습니다")
+        if not whole_chapter_match:
+            raise ValueError("입력 형식 오류")
+
+        book_input = text[:whole_chapter_match.start()]
+        start_chapter = int(whole_chapter_match.group(1))
+        start_verse = 1
+        end_chapter = start_chapter
+        end_verse = None
 
     book = book_map.get(book_input)
 
     if not book:
         raise ValueError(f"지원하지 않는 책 이름: {book_input}")
 
-    verse_numbers = list(range(start, end + 1))
+    return book, start_chapter, start_verse, end_chapter, end_verse
 
-    return book, chapter, verse_numbers
 
 @app.route('/')
 def home():
@@ -332,22 +346,21 @@ def generate_ppt():
 
         today = datetime.now().strftime("%Y-%m-%d")
 
-        book, chapter, verse_numbers = parse_verse_input(verse)
+        book, start_chapter, start_verse, end_chapter, end_verse = parse_verse_input(verse)
         full_book = short_to_full.get(book, book)
 
-        start_verse = verse_numbers[0]
-        end_verse = verse_numbers[-1]
-
-        if start_verse == end_verse:
-            verse_part = f"{start_verse}절"
+        if end_verse is None:
+            filename_verse_part = f"{start_chapter}장전체"
+        elif start_chapter == end_chapter:
+            if start_verse == end_verse:
+                filename_verse_part = f"{start_chapter}장{start_verse}절"
+            else:
+                filename_verse_part = f"{start_chapter}장{start_verse}-{end_verse}절"
         else:
-            verse_part = f"{start_verse}-{end_verse}절"
+            filename_verse_part = f"{start_chapter}장{start_verse}절-{end_chapter}장{end_verse}절"
 
-        filename = f"{today}_{full_book}{chapter}장{verse_part}.pptx"
+        filename = f"{today}_{full_book}{filename_verse_part}.pptx"
         prs.save(filename)
-
-        if os.path.exists(gradient_file):
-            os.remove(gradient_file)
 
         return send_file(
             filename,
@@ -393,23 +406,63 @@ def format_text_for_ppt(text, font_size):
     return "\n".join(lines)
 
 def get_bible_verses(verse_input, version):
-    book, chapter, verse_numbers = parse_verse_input(verse_input)
-    
+    book, start_chapter, start_verse, end_chapter, end_verse = parse_verse_input(verse_input)
+
+    if version not in bible_data:
+        raise ValueError(f"지원하지 않는 성경 버전: {version}")
+
     verses = []
-    
-    for v in verse_numbers:
-        key = f"{book} {chapter}:{v}"
-        text = bible_data[version].get(key, f"{key} (구절 없음)")
+    full_book = short_to_full.get(book, book)
 
-        # ⭐ 여기 추가
-        full_book = short_to_full.get(book, book)
-        reference = f"{full_book} {chapter}장 {v}절"
+    # 해당 책/장에 존재하는 절 번호들 찾기
+    def get_existing_verses(chapter):
+        verse_nums = []
 
-        verses.append({
-            "reference": reference,
-            "text": text
-        })
-    
+        prefix = f"{book} {chapter}:"
+
+        for key in bible_data[version].keys():
+            if key.startswith(prefix):
+                try:
+                    verse_num = int(key.split(":")[1])
+                    verse_nums.append(verse_num)
+                except:
+                    pass
+
+        return sorted(verse_nums)
+
+    # 장 전체 입력인 경우: end_verse가 None
+    if end_verse is None:
+        existing = get_existing_verses(start_chapter)
+
+        if not existing:
+            raise ValueError(f"{full_book} {start_chapter}장을 찾을 수 없습니다")
+
+        end_verse = existing[-1]
+
+    for chapter in range(start_chapter, end_chapter + 1):
+        existing = get_existing_verses(chapter)
+
+        if not existing:
+            continue
+
+        chapter_start = start_verse if chapter == start_chapter else existing[0]
+        chapter_end = end_verse if chapter == end_chapter else existing[-1]
+
+        for v in range(chapter_start, chapter_end + 1):
+            key = f"{book} {chapter}:{v}"
+            text = bible_data[version].get(key)
+
+            if text:
+                reference = f"{full_book} {chapter}장 {v}절"
+
+                verses.append({
+                    "reference": reference,
+                    "text": text
+                })
+
+    if not verses:
+        raise ValueError("해당 구절을 찾을 수 없습니다")
+
     return verses
 
 if __name__ == '__main__':

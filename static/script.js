@@ -150,6 +150,13 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.getElementById('downloadPPT').addEventListener('click', async function() {
+    const button = document.getElementById('downloadPPT');
+    const loading = document.getElementById('loadingText');
+
+    button.disabled = true;
+    button.innerText = '생성 중...';
+    loading.style.display = 'block';
+    
     const verse = document.getElementById('bibleVerse').value;
     const fontSize = document.getElementById('fontSize').value;
     const bgColor = document.getElementById('bgColor').value;

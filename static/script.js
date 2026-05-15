@@ -224,6 +224,9 @@ document.getElementById('downloadPPT').addEventListener('click', async function(
 
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+        button.disabled = false;
+        button.innerText = 'PPT 저장';
+        loading.style.display = 'none';
 
     } catch (err) {
         console.error("PPT 저장 실패:", err);

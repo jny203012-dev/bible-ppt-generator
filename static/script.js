@@ -231,7 +231,7 @@ document.getElementById('downloadPPT').addEventListener('click', async function(
     } catch (err) {
         console.error("PPT 저장 실패:", err);
         alert("PPT 저장 중 오류가 발생했습니다.");
-
+    } finally {
         button.disabled = false;
         button.innerText = 'PPT 저장';
         loading.style.display = 'none';

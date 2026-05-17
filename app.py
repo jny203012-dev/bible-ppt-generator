@@ -359,7 +359,8 @@ def generate_ppt():
         else:
             filename_verse_part = f"{start_chapter}장{start_verse}절-{end_chapter}장{end_verse}절"
 
-        filename = f"{today}_{full_book}{filename_verse_part}.pptx"
+        timestamp = datetime.now().strftime("%H%M%S")
+        filename = f"{today}_{full_book}{filename_verse_part}_{timestamp}.pptx"
         prs.save(filename)
 
         return send_file(

@@ -240,10 +240,12 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
 
     img.save(filename)
 
-@app.route('/generate', methods=['POST'])
-def generate_ppt():
-    try:
-        data = request.json
+ @app.route('/generate', methods=['GET', 'POST'])
+    def generate_ppt():
+        if request.method == 'POST':
+            data = request.json
+        else:
+            data = request.args
 
         verse = data['verse']
         version = data['version']

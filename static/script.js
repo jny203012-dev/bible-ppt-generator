@@ -149,14 +149,10 @@ document.addEventListener('keydown', (e) => {
     renderSlide();
 });
 
-document.getElementById('downloadPPT').addEventListener('click', async function() {
+document.getElementById('downloadPPT').addEventListener('click', function() {
     const button = document.getElementById('downloadPPT');
     const loading = document.getElementById('loadingText');
 
-    button.disabled = true;
-    button.innerText = '생성 중...';
-    loading.style.display = 'block';
-    
     const verse = document.getElementById('bibleVerse').value;
     const fontSize = document.getElementById('fontSize').value;
     const bgColor = document.getElementById('bgColor').value;
@@ -170,70 +166,26 @@ document.getElementById('downloadPPT').addEventListener('click', async function(
         return;
     }
 
-    try {
-        const response = await fetch('/generate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                verse,
-                fontSize,
-                bgColor,
-                fontColor,
-                fontFamily,
-                isBold,
-                version
-            })
-        });
+    button.disabled = true;
+    button.innerText = '생성 중...';
+    loading.style.display = 'block';
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("서버 오류:", errorText);
-            alert("PPT 저장 오류:\n" + errorText);
-            return;
-        }
+    const params = new URLSearchParams({
+        verse,
+        fontSize,
+        bgColor,
+        fontColor,
+        fontFamily,
+        isBold,
+        version,
+        t: Date.now()
+    });
 
-        // 파일명 추출
-        const disposition = response.headers.get('Content-Disposition');
-        let filename = 'bible_slides.pptx';
+    window.location.href = `/generate?${params.toString()}`;
 
-        if (disposition) {
-            // filename*=UTF-8''... 형식 우선 처리
-            const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/);
-            if (utf8Match && utf8Match[1]) {
-                filename = decodeURIComponent(utf8Match[1]);
-            } else {
-                // 일반 filename="..." 형식 처리
-                const normalMatch = disposition.match(/filename="?([^"]+)"?/);
-                if (normalMatch && normalMatch[1]) {
-                    filename = normalMatch[1];
-                }
-            }
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-
-        document.body.appendChild(a);
-        a.click();
-
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+    setTimeout(() => {
         button.disabled = false;
         button.innerText = 'PPT 저장';
         loading.style.display = 'none';
-
-    } catch (err) {
-        console.error("PPT 저장 실패:", err);
-        alert("PPT 저장 중 오류가 발생했습니다.");
-    } finally {
-        button.disabled = false;
-        button.innerText = 'PPT 저장';
-        loading.style.display = 'none';
-    }
+    }, 5000);
 });

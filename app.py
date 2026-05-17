@@ -250,7 +250,8 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
         verse = data['verse']
         version = data['version']
         font_size = int(data['fontSize'])
-        is_bold = data.get('isBold', True)
+        raw_bold = data.get('isBold', 'true')
+        is_bold = str(raw_bold).lower() == 'true'
 
         verses = get_bible_verses(verse, version)
 

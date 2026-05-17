@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+    from flask import Flask, request, jsonify, send_file
 from pptx.dml.color import RGBColor
 from pptx.util import Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
@@ -240,15 +240,18 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
 
     img.save(filename)
 
-@app.route('/generate', methods=['POST'])
-def generate_ppt():
-    try:
-        data = request.json
+ @app.route('/generate', methods=['GET', 'POST'])
+    def generate_ppt():
+        if request.method == 'POST':
+            data = request.json
+        else:
+            data = request.args
 
         verse = data['verse']
         version = data['version']
         font_size = int(data['fontSize'])
-        is_bold = data.get('isBold', True)
+        raw_bold = data.get('isBold', 'true')
+        is_bold = str(raw_bold).lower() == 'true'
 
         verses = get_bible_verses(verse, version)
 
@@ -359,14 +362,24 @@ def generate_ppt():
         else:
             filename_verse_part = f"{start_chapter}장{start_verse}절-{end_chapter}장{end_verse}절"
 
-        filename = f"{today}_{full_book}{filename_verse_part}.pptx"
+        timestamp = datetime.now().strftime("%H%M%S")
+        filename = f"{today}_{full_book}{filename_verse_part}_{timestamp}.pptx"
         prs.save(filename)
 
-        return send_file(
-            filename,
-            as_attachment=True,
-            download_name=filename
+        response = send_file(
+        filename,
+        as_attachment=True,
+        download_name=filename
         )
+
+        @response.call_on_close
+        def cleanup():
+            try:
+                os.remove(filename)
+            except:
+                pass
+        
+        return response
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400

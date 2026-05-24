@@ -181,28 +181,28 @@ document.getElementById('downloadPPT').addEventListener('click', function() {
         t: Date.now()
     });
 
-    // 기존 iframe 제거
-    const oldFrame = document.getElementById('downloadFrame');
-    if (oldFrame) {
-        oldFrame.remove();
+// 기존 iframe 제거
+const oldFrame = document.getElementById('downloadFrame');
+if (oldFrame) {
+    oldFrame.remove();
+}
+
+// 새 iframe 생성
+const iframe = document.createElement('iframe');
+iframe.style.display = 'none';
+iframe.id = 'downloadFrame';
+iframe.src = `/generate?${params.toString()}`;
+
+document.body.appendChild(iframe);
+
+// 다운로드 완료 감지가 불안정해서 일정 시간 후 UI만 복구
+setTimeout(() => {
+    button.disabled = false;
+    button.innerText = 'PPT 저장';
+    loading.style.display = 'none';
+
+    const frame = document.getElementById('downloadFrame');
+    if (frame) {
+        frame.remove();
     }
-
-    // 새 iframe 생성
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.id = 'downloadFrame';
-
-    iframe.onload = function() {
-        setTimeout(() => {
-            iframe.remove();
-
-            button.disabled = false;
-            button.innerText = 'PPT 저장';
-            loading.style.display = 'none';
-        }, 1000);
-    };
-
-    iframe.src = `/generate?${params.toString()}`;
-
-    document.body.appendChild(iframe);
-});
+}, 12000);

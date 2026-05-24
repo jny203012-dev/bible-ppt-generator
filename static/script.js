@@ -162,7 +162,7 @@ document.getElementById('downloadPPT').addEventListener('click', function() {
     const version = document.getElementById('version').value;
 
     if (!verse.trim()) {
-        alert("성경 구절을 입력해주세요. 예: 겔40:1-4");
+        alert("성경 구절을 입력해주세요.");
         return;
     }
 
@@ -181,11 +181,28 @@ document.getElementById('downloadPPT').addEventListener('click', function() {
         t: Date.now()
     });
 
-    window.location.href = `/generate?${params.toString()}`;
+    // 기존 iframe 제거
+    const oldFrame = document.getElementById('downloadFrame');
+    if (oldFrame) {
+        oldFrame.remove();
+    }
 
-    setTimeout(() => {
-        button.disabled = false;
-        button.innerText = 'PPT 저장';
-        loading.style.display = 'none';
-    }, 5000);
+    // 새 iframe 생성
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.id = 'downloadFrame';
+
+    iframe.onload = function() {
+        setTimeout(() => {
+            iframe.remove();
+
+            button.disabled = false;
+            button.innerText = 'PPT 저장';
+            loading.style.display = 'none';
+        }, 1000);
+    };
+
+    iframe.src = `/generate?${params.toString()}`;
+
+    document.body.appendChild(iframe);
 });

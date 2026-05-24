@@ -240,8 +240,9 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
 
     img.save(filename)
 
- @app.route('/generate', methods=['GET', 'POST'])
-    def generate_ppt():
+@app.route('/generate', methods=['GET', 'POST'])
+def generate_ppt():
+    try:
         if request.method == 'POST':
             data = request.json
         else:
@@ -250,8 +251,7 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
         verse = data['verse']
         version = data['version']
         font_size = int(data['fontSize'])
-        raw_bold = data.get('isBold', 'true')
-        is_bold = str(raw_bold).lower() == 'true'
+        is_bold = str(data.get('isBold', 'true')).lower() == 'true'
 
         verses = get_bible_verses(verse, version)
 
@@ -260,21 +260,19 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
         prs.slide_height = Inches(7.5)
 
         ppt_font_name = "Malgun Gothic"
-
         text_color = RGBColor.from_string("FFFFFF")
         ref_box_color = RGBColor.from_string("54453D")
 
         gradient_file = f"gradient_{uuid.uuid4().hex}.png"
         create_gradient_background(
-        gradient_file,
-        start_hex="1C1616",
-        end_hex="352115"
+            gradient_file,
+            start_hex="271C1C",
+            end_hex="503627"
         )
 
         for v in verses:
             slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-            # 배경 그라데이션 이미지
             slide.shapes.add_picture(
                 gradient_file,
                 0,
@@ -283,10 +281,9 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
                 height=prs.slide_height
             )
 
-            # 절 이름 박스
             ref_box_width = Inches(3.8)
             ref_box_height = Inches(0.72)
-            ref_box_x = (prs.slide_width - ref_box_width) / 2
+            ref_box_x = (prs.slide_width - ref_box_width) / 2 - Inches(0.2)
             ref_box_y = Inches(0.45)
 
             ref_shape = slide.shapes.add_shape(
@@ -319,12 +316,11 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
             ref_run.font.bold = True
             ref_run.font.color.rgb = text_color
 
-            # 본문 텍스트
             text_box = slide.shapes.add_textbox(
-             Inches(0.35),   # 왼쪽 여백 줄임
-             Inches(1.75),
-             Inches(12.25),  # 폭 넓힘
-             Inches(4.5)
+                Inches(0.25),
+                Inches(1.75),
+                Inches(12.45),
+                Inches(4.6)
             )
 
             text_frame = text_box.text_frame
@@ -337,8 +333,8 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
             text_frame.margin_bottom = 0
 
             p = text_frame.paragraphs[0]
-            p.line_spacing = 1.15
             p.alignment = PP_ALIGN.CENTER
+            p.line_spacing = 1.15
 
             run = p.add_run()
             run.text = v['text']
@@ -348,6 +344,7 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
             run.font.color.rgb = text_color
 
         today = datetime.now().strftime("%Y-%m-%d")
+        timestamp = datetime.now().strftime("%H%M%S")
 
         book, start_chapter, start_verse, end_chapter, end_verse = parse_verse_input(verse)
         full_book = short_to_full.get(book, book)
@@ -362,61 +359,20 @@ def create_gradient_background(filename, start_hex="FFFFFF", end_hex="FFF7F3", w
         else:
             filename_verse_part = f"{start_chapter}장{start_verse}절-{end_chapter}장{end_verse}절"
 
-        timestamp = datetime.now().strftime("%H%M%S")
         filename = f"{today}_{full_book}{filename_verse_part}_{timestamp}.pptx"
         prs.save(filename)
 
-        response = send_file(
-        filename,
-        as_attachment=True,
-        download_name=filename
-        )
+        if os.path.exists(gradient_file):
+            os.remove(gradient_file)
 
-        @response.call_on_close
-        def cleanup():
-            try:
-                os.remove(filename)
-            except:
-                pass
-        
-        return response
+        return send_file(
+            filename,
+            as_attachment=True,
+            download_name=filename
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-    
-def format_text_for_ppt(text, font_size):
-    words = text.split()
-    lines = []
-    current_line = ""
-
-    # 폰트 크기에 따라 한 줄 최대 글자 수를 대충 조정
-    if font_size >= 48:
-        max_chars = 30
-    elif font_size >= 42:
-        max_chars = 34
-    elif font_size >= 36:
-        max_chars = 40
-    elif font_size >= 30:
-        max_chars = 48
-    elif font_size >= 24:
-        max_chars = 56
-    else:
-        max_chars = 64
-
-    for word in words:
-        test_line = current_line + (" " if current_line else "") + word
-
-        if len(test_line) <= max_chars:
-            current_line = test_line
-        else:
-            if current_line:
-                lines.append(current_line)
-            current_line = word
-
-    if current_line:
-        lines.append(current_line)
-
-    return "\n".join(lines)
 
 def get_bible_verses(verse_input, version):
     book, start_chapter, start_verse, end_chapter, end_verse = parse_verse_input(verse_input)

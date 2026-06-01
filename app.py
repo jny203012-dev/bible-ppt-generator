@@ -12,6 +12,7 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.util import Inches, Pt
 from PIL import Image
+from io import BytesIO
 
 book_map = {
     # 구약
@@ -360,20 +361,24 @@ def generate_ppt():
             filename_verse_part = f"{start_chapter}장{start_verse}절-{end_chapter}장{end_verse}절"
 
         filename = f"{today}_{full_book}{filename_verse_part}_{timestamp}.pptx"
-        prs.save(filename)
+
+        ppt_stream = BytesIO()
+        prs.save(ppt_stream)
+        ppt_stream.seek(0)
 
         if os.path.exists(gradient_file):
             os.remove(gradient_file)
 
         return send_file(
-            filename,
+            ppt_stream,
             as_attachment=True,
-            download_name=filename
+            download_name=filename,
+            mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation"
         )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
+    
 def get_bible_verses(verse_input, version):
     book, start_chapter, start_verse, end_chapter, end_verse = parse_verse_input(verse_input)
 
@@ -383,23 +388,17 @@ def get_bible_verses(verse_input, version):
     verses = []
     full_book = short_to_full.get(book, book)
 
-    # 해당 책/장에 존재하는 절 번호들 찾기
     def get_existing_verses(chapter):
         verse_nums = []
-
-        prefix = f"{book} {chapter}:"
+        pattern = re.compile(rf'^{re.escape(book)} {chapter}:(\d+)$')
 
         for key in bible_data[version].keys():
-            if key.startswith(prefix):
-                try:
-                    verse_num = int(key.split(":")[1])
-                    verse_nums.append(verse_num)
-                except:
-                    pass
+            match = pattern.match(key)
+            if match:
+                verse_nums.append(int(match.group(1)))
 
         return sorted(verse_nums)
 
-    # 장 전체 입력인 경우: end_verse가 None
     if end_verse is None:
         existing = get_existing_verses(start_chapter)
 
@@ -423,7 +422,6 @@ def get_bible_verses(verse_input, version):
 
             if text:
                 reference = f"{full_book} {chapter}장 {v}절"
-
                 verses.append({
                     "reference": reference,
                     "text": text

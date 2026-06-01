@@ -150,9 +150,6 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.getElementById('downloadPPT').addEventListener('click', function() {
-    const button = document.getElementById('downloadPPT');
-    const loading = document.getElementById('loadingText');
-
     const verse = document.getElementById('bibleVerse').value;
     const fontSize = document.getElementById('fontSize').value;
     const bgColor = document.getElementById('bgColor').value;
@@ -166,9 +163,8 @@ document.getElementById('downloadPPT').addEventListener('click', function() {
         return;
     }
 
-    button.disabled = true;
+    const button = document.getElementById('downloadPPT');
     button.innerText = '생성 중...';
-    loading.style.display = 'block';
 
     const params = new URLSearchParams({
         verse,
@@ -181,28 +177,9 @@ document.getElementById('downloadPPT').addEventListener('click', function() {
         t: Date.now()
     });
 
-// 기존 iframe 제거
-const oldFrame = document.getElementById('downloadFrame');
-if (oldFrame) {
-    oldFrame.remove();
-}
+    window.open(`/generate?${params.toString()}`, '_blank');
 
-// 새 iframe 생성
-const iframe = document.createElement('iframe');
-iframe.style.display = 'none';
-iframe.id = 'downloadFrame';
-iframe.src = `/generate?${params.toString()}`;
-
-document.body.appendChild(iframe);
-
-// 다운로드 완료 감지가 불안정해서 일정 시간 후 UI만 복구
-setTimeout(() => {
-    button.disabled = false;
-    button.innerText = 'PPT 저장';
-    loading.style.display = 'none';
-
-    const frame = document.getElementById('downloadFrame');
-    if (frame) {
-        frame.remove();
-    }
-}, 12000);
+    setTimeout(() => {
+        button.innerText = 'PPT 저장';
+    }, 3000);
+});
